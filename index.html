@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>xsukax Code Line Numberer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .code-block { font-family: 'Consolas', 'Monaco', 'Courier New', monospace; }
+        .notification { animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 2.7s; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        .fade-out { animation: fadeOut 0.3s ease-in forwards; }
+        .mode-badge { transition: all 0.3s ease; }
+        .swap-icon { transition: transform 0.3s ease; }
+        .swap-icon.active { transform: rotate(180deg); }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 to-slate-100 min-h-screen">
+    <div id="notification-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2"></div>
+    
+    <main class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-slate-800 mb-2">xsukax Code Line Numberer</h1>
+            <p class="text-slate-600">Real-time automatic line numbering and removal for your code</p>
+        </header>
+
+        <div class="flex justify-center mb-6">
+            <div class="bg-white rounded-lg shadow-lg p-2 inline-flex items-center gap-3">
+                <span id="mode-badge" class="mode-badge px-4 py-2 rounded-md font-semibold text-sm bg-blue-100 text-blue-800">Mode: Add Numbers</span>
+                <button onclick="toggleMode()" class="swap-icon px-6 py-2 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-lg font-semibold transition-all duration-200 shadow-md flex items-center gap-2">
+                    <span class="text-xl">⇄</span>
+                    <span>Swap Mode</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-slate-800">Input</h2>
+                    <button onclick="clearInput()" class="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-md transition-colors duration-200 text-sm font-medium">Clear</button>
+                </div>
+                <textarea id="input" placeholder="Paste your code here...
+
+Example (Add Mode):
+function hello() {
+  console.log('Hello World');
+}
+
+Example (Remove Mode):
+1  function hello() {
+2    console.log('Hello World');
+3  }" class="w-full h-96 p-4 border-2 border-slate-300 rounded-lg focus:border-blue-500 focus:outline-none font-mono text-sm resize-none transition-colors duration-200"></textarea>
+            </section>
+
+            <section class="bg-white rounded-lg shadow-lg p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-semibold text-slate-800">Output</h2>
+                    <button onclick="copyOutput()" class="px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-md transition-colors duration-200 text-sm font-medium">Copy</button>
+                </div>
+                <div id="output" class="w-full h-96 p-4 border-2 border-slate-300 rounded-lg bg-slate-50 font-mono text-sm overflow-auto whitespace-pre-wrap"></div>
+                <div class="mt-4 text-sm text-slate-600">
+                    <p id="status-line-1">✓ Ready to process your code</p>
+                    <p>✓ Preserves original formatting and indentation</p>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <footer class="text-center py-8 text-slate-600 text-sm">
+        <p>Created by <strong class="text-slate-800">xsukax</strong> | Simple, Fast, Efficient</p>
+    </footer>
+
+    <script>
+        let currentMode = 'add'; // 'add' or 'remove'
+
+        const showNotification = (message, type = 'success') => {
+            const container = document.getElementById('notification-container');
+            const notification = document.createElement('div');
+            const bgColor = type === 'success' ? 'bg-green-500' : type === 'error' ? 'bg-red-500' : 'bg-blue-500';
+            
+            notification.className = `notification ${bgColor} text-white px-6 py-4 rounded-lg shadow-xl min-w-64 max-w-sm`;
+            notification.innerHTML = `<div class="flex items-center gap-3"><span class="text-lg">${type === 'success' ? '✓' : type === 'error' ? '✕' : 'ℹ'}</span><span class="font-medium">${message}</span></div>`;
+            
+            container.appendChild(notification);
+            
+            setTimeout(() => {
+                notification.classList.add('fade-out');
+                setTimeout(() => notification.remove(), 300);
+            }, 2700);
+        };
+
+        const toggleMode = () => {
+            currentMode = currentMode === 'add' ? 'remove' : 'add';
+            const badge = document.getElementById('mode-badge');
+            const statusLine = document.getElementById('status-line-1');
+            const swapIcon = document.querySelector('.swap-icon');
+            
+            if (currentMode === 'add') {
+                badge.textContent = 'Mode: Add Numbers';
+                badge.className = 'mode-badge px-4 py-2 rounded-md font-semibold text-sm bg-blue-100 text-blue-800';
+                statusLine.textContent = '✓ Adding line numbers automatically';
+                showNotification('Switched to Add Numbers mode', 'info');
+            } else {
+                badge.textContent = 'Mode: Remove Numbers';
+                badge.className = 'mode-badge px-4 py-2 rounded-md font-semibold text-sm bg-pink-100 text-pink-800';
+                statusLine.textContent = '✓ Removing line numbers automatically';
+                showNotification('Switched to Remove Numbers mode', 'info');
+            }
+            
+            swapIcon.classList.toggle('active');
+            processCode();
+        };
+
+        const addLineNumbers = (text) => {
+            if (!text.trim()) return '';
+            
+            const lines = text.split('\n');
+            const maxLineNum = lines.length;
+            const padding = maxLineNum.toString().length;
+            
+            const numberedLines = lines.map((line, index) => {
+                const lineNum = (index + 1).toString().padStart(padding, ' ');
+                return `${lineNum}  ${line}`;
+            });
+
+            return numberedLines.join('\n');
+        };
+
+        const removeLineNumbers = (text) => {
+            if (!text.trim()) return '';
+            
+            const lines = text.split('\n');
+            const cleanedLines = lines.map(line => {
+                // Match various line number formats: "1  ", "01  ", "001  ", "1. ", etc.
+                // Handles any number of digits, followed by optional dots/pipes and spaces
+                return line.replace(/^\s*\d+[\s.:|)]*/, '');
+            });
+
+            return cleanedLines.join('\n');
+        };
+
+        const processCode = () => {
+            const input = document.getElementById('input').value;
+            
+            if (!input.trim()) {
+                document.getElementById('output').textContent = '';
+                return;
+            }
+
+            let result;
+            if (currentMode === 'add') {
+                result = addLineNumbers(input);
+            } else {
+                result = removeLineNumbers(input);
+            }
+
+            document.getElementById('output').textContent = result;
+        };
+
+        const copyOutput = () => {
+            const output = document.getElementById('output').textContent;
+            
+            if (!output.trim()) {
+                showNotification('Nothing to copy. Add some code first.', 'error');
+                return;
+            }
+
+            navigator.clipboard.writeText(output).then(() => {
+                showNotification('Copied to clipboard!', 'success');
+            }).catch(() => {
+                showNotification('Failed to copy to clipboard', 'error');
+            });
+        };
+
+        const clearInput = () => {
+            document.getElementById('input').value = '';
+            document.getElementById('output').textContent = '';
+            showNotification('Input cleared', 'info');
+        };
+
+        // Real-time processing
+        document.getElementById('input').addEventListener('input', processCode);
+
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+                e.preventDefault();
+                toggleMode();
+            }
+        });
+    </script>
+</body>
+</html>
